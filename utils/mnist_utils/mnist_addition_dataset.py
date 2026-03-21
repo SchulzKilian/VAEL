@@ -128,7 +128,7 @@ class nMNIST(Dataset):
         """
         try:
             print("Loading data...")
-            data = load(path)
+            data = load(path, weights_only=False)
             print("Loaded.")
         except Exception as e:
             print(e)
