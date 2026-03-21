@@ -130,8 +130,10 @@ class nMNIST(Dataset):
             print("Loading data...")
             data = load(path)
             print("Loaded.")
-        except:
+        except Exception as e:
+            print(e)
             print("No dataset found.")
+            raise e
 
         images = data[self.mode]['images']
         labels = data[self.mode]['labels']
@@ -217,7 +219,8 @@ def check_dataset(n_digits, data_folder, data_file, dataset_dim):
     data_path = os.path.join(data_folder, data_file)
     try:
         load(data_path)
-    except:
+    except Exception as e:
+        print(e)
         print("No dataset found -> building a new dataset")
         # Define dataset dimension so to have the same number of worlds
         n_worlds = n_digits * n_digits
