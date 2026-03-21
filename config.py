@@ -18,7 +18,7 @@ mnist_vael = dict(
                   'n_exp': [5],
                   'latent_dim_sub': [8],
                   'latent_dim_sym': [15],
-                  'learning_rate': [1e-3],
+                  'learning_rate': [1e-4],
                   'dropout': [0.5],
                   'dropout_ENC': [0.5],
                   'dropout_DEC': [0.5],

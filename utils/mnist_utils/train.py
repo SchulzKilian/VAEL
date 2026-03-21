@@ -145,7 +145,7 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
 
             # Backward pass
             loss.backward()
-
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             # Optimization step
             optimizer.step()
 
