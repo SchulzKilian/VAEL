@@ -5,6 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
+*.pt
 
 # Distribution / packaging
 .Python
@@ -132,7 +133,7 @@ dmypy.json
 .DS_Store
 
 # Experiments folder
-experiments
+# experiments
 data/MNIST/2mnist_10digits/2mnist_10digits.pt
 
 #Intellij
