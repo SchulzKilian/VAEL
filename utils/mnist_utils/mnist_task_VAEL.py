@@ -61,9 +61,9 @@ def update_resource(log_filepath, update_info, lock_filename='access.lock'):
 def load_data(n_digits, sequence_len, batch_size, data_file, data_folder, task='base', tag='base', classes=None):
     if task == 'base':
         print("\n Base task\n")
-        train_idxs = torch.load(os.path.join(data_folder,"train_indexes.pt"))
-        val_idxs = torch.load(os.path.join(data_folder,"val_indexes.pt"))
-        test_idxs = torch.load(os.path.join(data_folder,"test_indexes.pt"))
+        train_idxs = torch.load(os.path.join(data_folder,"train_indexes.pt"), weights_only=False)
+        val_idxs = torch.load(os.path.join(data_folder,"val_indexes.pt"), weights_only=False)
+        test_idxs = torch.load(os.path.join(data_folder,"test_indexes.pt"), weights_only=False)
 
         # Prepare data
         data_path = os.path.join(data_folder, data_file)
@@ -97,10 +97,10 @@ def load_mnist_classifier(checkpoint_path, device):
                         nn.LogSoftmax(dim=1))
 
     if torch.cuda.is_available():
-        clf.load_state_dict(torch.load(checkpoint_path))
+        clf.load_state_dict(torch.load(checkpoint_path, weights_only=False))
         clf = clf.to(device)
     else:
-        clf.load_state_dict(torch.load(checkpoint_path, map_location=torch.device('cpu')))
+        clf.load_state_dict(torch.load(checkpoint_path, map_location=torch.device('cpu'), weights_only=False))
 
     return clf
 
@@ -117,7 +117,9 @@ def define_experiment(exp_folder, exp_class, params, exp_counter):
         required_exp = params['n_exp']
 
         if len(log_csv) > 0:
-            query = ''.join(f' {key} == {params[key]} &' for key in params_columns)[:-1]
+            # Only query on columns present in the CSV (handles CSVs from before flow_w was added)
+            query_cols = [k for k in params_columns if k in log_csv.columns]
+            query = ''.join(f' {key} == {params[key]} &' for key in query_cols)[:-1]
             n_exp = len(log_csv.query(query))
             if n_exp == 0:
                 exp_ID = log_csv['exp_ID'].max() + 1
@@ -345,7 +347,7 @@ def run_mnist_vael(param_grid, exp_class, exp_folder, data_folder, batch_size, d
             np.save(os.path.join(exp_folder, exp_class, exp_ID, str(run_ID), 'validation_info.npy'), validation_info)
 
             # Load checkpoint
-            last_checkpoint = torch.load(checkpoint_path)
+            last_checkpoint = torch.load(checkpoint_path, weights_only=False)
             model.load_state_dict(last_checkpoint['model'])
             optimizer.load_state_dict(last_checkpoint['optimizer'])
 
