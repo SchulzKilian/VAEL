@@ -1,0 +1,2 @@
+exp_ID,run_ID,latent_dim_sub,latent_dim_sym,learning_rate,dropout,dropout_ENC,dropout_DEC,recon_w,kl_w,query_w,sup_w,flow_w,LAPLACE_recon_val,acc_discr_val,LAPLACE_recon_test,acc_discr_test,acc_gen,epochs,max_epoch,time,tag
+1,22-03-2026-17-02-45,8,15,0.0001,0.5,0.5,0.5,0.1,1e-05,1.0,0.0,1.0,2084.931640625,0.87,2086.511474609375,0.91,0.35210526315789475,50,50,1727.5326266288757,base_10Digits
