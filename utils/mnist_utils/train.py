@@ -56,7 +56,7 @@ def img_log_likelihood(recon, xs):
 
 
 def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_stopping_info=None, run_ID='_',
-                query=True, recon_w=1, kl_w=1, query_w=1, sup_w=0, flow_w=0.0,
+                query=True, recon_w=1, kl_w=1, query_w=1, sup_w=0, flow_w=0.0, flow_warmup_epochs=15,
                 rec_loss='MSE', train_batch_size=32, val_batch_size=32):
     Path(os.path.join(folder, run_ID)).mkdir(parents=True, exist_ok=True)
     if sup_w > 0:
@@ -74,6 +74,9 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
                                    verbose=True)
 
     for epoch in range(1, n_epochs + 1):
+
+        # Warmup: ramp flow_w from 0 to target over the first flow_warmup_epochs epochs
+        effective_flow_w = flow_w * min(1.0, epoch / flow_warmup_epochs)
 
         # Training info
         train_epoch_info = {
@@ -138,10 +141,10 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
                                                                                sup=sup,
                                                                                rec_loss=rec_loss)
 
-            # Flow matching loss: trains FlowNet to model p(z_sub | facts_probs).
+            # Flow matching loss: trains FlowNet to model p(z_sub | world_h).
             # Inputs are detached so only FlowNet parameters receive this gradient.
             flow_loss = model.compute_flow_loss()
-            total_loss = loss + flow_w * flow_loss
+            total_loss = loss + effective_flow_w * flow_loss
 
             # Registering losses
             train_epoch_info['elbo'].append(loss.data.cpu().detach().numpy())

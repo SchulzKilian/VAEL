@@ -98,13 +98,6 @@ def generative_ability(model, clf, n_sample):
             # Extract probability for each digit
             model.facts_probs = model.compute_facts_probability(z[:, :model.latent_dim_sym])
 
-            # Sample z_sub: use flow if available, else plain Gaussian
-            if model.flow_net is not None:
-                cond = model.facts_probs.detach().flatten(1)
-                z_subsym = model.flow_sample(cond)
-            else:
-                z_subsym = z[:, model.latent_dim_sym:]
-
             # Problog inference to compute worlds probability distributions given the evidence P(w|e)
             worlds_prob = model.problog_inference_with_evidence(model.facts_probs, evidence)
 
@@ -114,6 +107,12 @@ def generative_ability(model, clf, n_sample):
 
             # Represent the sampled world in the herbrand base
             world_h = model.herbrand(world)
+
+            # Sample z_sub conditioned on the sampled world (binary world_h), or use plain Gaussian
+            if model.flow_net is not None:
+                z_subsym = model.flow_sample(world_h)
+            else:
+                z_subsym = z[:, model.latent_dim_sym:]
 
             # Image decoding
             images = model.decode(z_subsym, world_h)

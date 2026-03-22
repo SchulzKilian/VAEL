@@ -47,8 +47,8 @@ class VAELModel(nn.Module):
         z = self.reparametrize(mu, logvar)
 
         # Sub-symbolical component
+        self.z_subsym_predropout = z[:, self.latent_dim_sym:].clone()  # pre-dropout copy for flow loss target
         self.z_subsym = z[:, self.latent_dim_sym:]
-        self.z_subsym_predropout = self.z_subsym  # keep pre-dropout copy for flow loss target
 
         # Dropout on sub-symbolical variable
         if self.dropout and self.training:
@@ -65,10 +65,10 @@ class VAELModel(nn.Module):
         self.world = F.gumbel_softmax(logits, tau=1, hard=True)
 
         # Represent the sampled world in the herbrand base
-        world_h = self.herbrand(self.world)
+        self.world_h = self.herbrand(self.world)
 
         # Image decoding
-        image = self.decode(self.z_subsym, world_h)
+        image = self.decode(self.z_subsym, self.world_h)
 
         return image, mu, logvar, self.query_prob
 
@@ -88,18 +88,21 @@ class VAELModel(nn.Module):
 
     def compute_flow_loss(self):
         """
-        Conditional Flow Matching loss over z_sub conditioned on facts_probs.
+        Conditional Flow Matching loss over z_sub conditioned on world_h.
 
         Uses a linear interpolation path x_t = (1-t)*x_0 + t*z_sub between
         Gaussian noise x_0 and the encoded z_sub. The optimal velocity for
         this path is (z_sub - x_0), which the flow net learns to predict.
 
-        Both z_sub and facts_probs are detached so the flow loss does not
-        affect encoder/ProbLog gradients — only FlowNet parameters are trained
-        by this loss.
+        Conditioning on world_h (binary Herbrand encoding of the sampled digit
+        pair) rather than soft facts_probs gives the flow net a crisp, discrete
+        signal: it learns p(z_sub | digit1, digit2).
 
-        Call this after the forward pass (which sets self.z_subsym and self.facts_probs).
-        Returns a scalar zero tensor if flow_net is None.
+        Both z_sub and world_h are detached so the flow loss does not affect
+        encoder/ProbLog gradients — only FlowNet parameters are trained.
+
+        Call this after the forward pass (which sets self.z_subsym_predropout
+        and self.world_h). Returns a scalar zero tensor if flow_net is None.
         """
         if self.flow_net is None:
             return torch.zeros((), device=self.device)
@@ -110,7 +113,7 @@ class VAELModel(nn.Module):
         x_t = (1.0 - t) * x_0 + t * x_1                      # linear interpolant
         v_target = x_1 - x_0                                  # optimal velocity
 
-        cond = self.facts_probs.detach().flatten(1)            # (bs, dim_cond)
+        cond = self.world_h.detach()                           # (bs, 2*n_digits) — binary world encoding
         v_pred = self.flow_net(x_t, t, cond)
 
         return F.mse_loss(v_pred, v_target)
@@ -119,7 +122,7 @@ class VAELModel(nn.Module):
         """
         Sample z_sub by integrating the learned velocity field via Euler method.
 
-        cond:    (bs, dim_cond) - conditioning vector (flattened facts_probs)
+        cond:    (bs, 2*n_digits) - binary Herbrand world encoding (world_h)
         n_steps: number of Euler integration steps (20 is sufficient for low-dim latents)
         Returns z_sub samples of shape (bs, latent_dim_sub).
         """

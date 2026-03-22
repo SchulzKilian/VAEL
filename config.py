@@ -4,7 +4,9 @@ VAEL experiment(s) configuration
 mnist_vael = dict(
     device = 'cuda:0',
     n_digits = 10,
-    experiment_name='vael_2digitMNIST_flow',
+    # Ablation: flow_w=0.0 is the original VAEL baseline, flow_w=1.0 is VAEL+flow.
+    # Both run with n_exp=5 seeds and land in the same CSV for direct comparison.
+    experiment_name='vael_2digitMNIST_comparison',
     dataset_dimensions = {'train': 42000,
                           'val': 12000,
                           'test': 6000},
@@ -12,10 +14,10 @@ mnist_vael = dict(
                   'val': 120,
                   'test': 60},
     exp_config = {'task': ['base'],
-                  'tag': ['base_10Digits'],
+                  'tag': ['ablation'],
                   'rec_loss': ['LAPLACE'],
                   'max_epoch': [50],
-                  'n_exp': [1],
+                  'n_exp': [5],
                   'latent_dim_sub': [8],
                   'latent_dim_sym': [15],
                   'learning_rate': [1e-4],
@@ -26,7 +28,7 @@ mnist_vael = dict(
                   'kl_w': [1e-5],
                   'query_w': [1.],
                   'sup_w': [0.],
-                  'flow_w': [1.0],
+                  'flow_w': [0.0, 1.0],   # grid: 0.0 = baseline, 1.0 = flow
                   'query': [True]},
     early_stopping_info = {
         'patience': 20,

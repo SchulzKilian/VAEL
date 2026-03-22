@@ -323,16 +323,17 @@ class FlowNet(nn.Module):
     Velocity field for conditional flow matching over z_sub.
 
     Learns a vector field v(x_t, t, cond) -> dx/dt that transports
-    samples from N(0,I) to the posterior distribution p(z_sub | facts_probs).
+    samples from N(0,I) to the posterior distribution p(z_sub | world_h),
+    where world_h is the binary Herbrand encoding of the sampled digit pair.
     Trained with the Conditional Flow Matching (CFM) objective using
     linear interpolation paths: x_t = (1-t)*x_0 + t*z_sub.
 
     Args:
         dim_sub:  dimensionality of z_sub (the subsymbolic latent)
-        dim_cond: dimensionality of the conditioning vector (flattened facts_probs)
+        dim_cond: dimensionality of the conditioning vector (world_h = 2*n_digits)
         hidden:   hidden layer width
     """
-    def __init__(self, dim_sub, dim_cond, hidden=256):
+    def __init__(self, dim_sub, dim_cond, hidden=64):
         super(FlowNet, self).__init__()
 
         self.t_embed = nn.Sequential(
@@ -355,7 +356,7 @@ class FlowNet(nn.Module):
         """
         x_t:  (bs, dim_sub)  - noisy latent at time t in [0, 1]
         t:    (bs, 1)        - time scalar per sample
-        cond: (bs, dim_cond) - symbolic conditioning (flattened facts_probs)
+        cond: (bs, dim_cond) - binary Herbrand world encoding (world_h)
         Returns velocity (bs, dim_sub).
         """
         t_emb = self.t_embed(t)

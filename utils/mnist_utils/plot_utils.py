@@ -83,13 +83,6 @@ def image_generation(model, name, folder, img_suff="", n_samples=9, batch_size=3
             # Extract probability for each digit
             model.facts_probs = model.compute_facts_probability(z[:, :model.latent_dim_sym])
 
-            # Sample z_sub: use flow if available, else plain Gaussian
-            if model.flow_net is not None:
-                cond = model.facts_probs.detach().flatten(1)
-                z_subsym = model.flow_sample(cond)
-            else:
-                z_subsym = z[:, model.latent_dim_sym:]
-
             queries = list(range(model.mlp.n_facts - 1))
             query_prob = torch.empty(1, len(queries))
             for query in queries:
@@ -103,6 +96,12 @@ def image_generation(model, name, folder, img_suff="", n_samples=9, batch_size=3
 
             # Represent the sampled world in the herbrand base
             world_h = model.herbrand(world)
+
+            # Sample z_sub conditioned on the sampled world (binary world_h), or use plain Gaussian
+            if model.flow_net is not None:
+                z_subsym = model.flow_sample(world_h)
+            else:
+                z_subsym = z[:, model.latent_dim_sym:]
 
             # Image decoding
             image = model.decode(z_subsym, world_h).detach().cpu().numpy()[0]
@@ -146,13 +145,6 @@ def conditional_image_generation(model, name, folder, img_suff="", batch_size=32
                     # Extract probability for each digit
                     model.facts_probs = model.compute_facts_probability(z[:, :model.latent_dim_sym])
 
-                    # Sample z_sub: use flow if available, else plain Gaussian
-                    if model.flow_net is not None:
-                        cond = model.facts_probs.detach().flatten(1)
-                        z_subsym = model.flow_sample(cond)
-                    else:
-                        z_subsym = z[:, model.latent_dim_sym:]
-
                     # Problog inference to compute worlds probability distributions given the evidence P(w|e)
                     worlds_prob = model.problog_inference_with_evidence(model.facts_probs, evidence)
 
@@ -162,6 +154,12 @@ def conditional_image_generation(model, name, folder, img_suff="", batch_size=32
 
                     # Represent the sampled world in the herbrand base
                     world_h = model.herbrand(world)
+
+                    # Sample z_sub conditioned on the sampled world (binary world_h), or use plain Gaussian
+                    if model.flow_net is not None:
+                        z_subsym = model.flow_sample(world_h)
+                    else:
+                        z_subsym = z[:, model.latent_dim_sym:]
 
                     # Image decoding
                     image = model.decode(z_subsym, world_h).detach().cpu().numpy()[0]
