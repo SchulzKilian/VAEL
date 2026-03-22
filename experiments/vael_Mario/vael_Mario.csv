@@ -1,0 +1,2 @@
+exp_ID,run_ID,latent_dim_sub,latent_dim_sym,learning_rate,dropout,dropout_ENC,dropout_DEC,recon_w,kl_w,query_w,sup_w,max_epoch,hidden_chs_MLP,hidden_chs_ENC,hidden_chs_DEC,LAPLACE_recon_val,f1_val,LAPLACE_recon_train,f1_train,acc_gen,train_elbo,val_elbo,epochs,max_epoch,time,tag
+1,22-03-2026-15-24-39,30,18,0.0001,0.1,0.0,0.0,10.0,10.0,10000.0,0.0,200,32,64,64,72827.8828125,0.716765873015873,72823.8984375,0.7661785545583373,0.15376984126984128,73031.109375,72971.546875,200,200,4399.819811582565,base
