@@ -15,7 +15,7 @@ from sklearn.model_selection import ParameterGrid
 from torch import nn, optim
 
 from models.vael import MNISTPairsVAELModel
-from models.vael_networks import MNISTPairsEncoder, MNISTPairsDecoder, MNISTPairsMLP
+from models.vael_networks import MNISTPairsEncoder, MNISTPairsDecoder, MNISTPairsMLP, FlowNet
 from utils.mnist_utils.mnist_addition_dataset import nMNIST, check_dataset
 from utils.mnist_utils.metrics import reconstructive_ability, discriminative_ability, generative_ability
 from utils.mnist_utils.plot_utils import conditional_image_generation, learning_curve, image_reconstruction, image_generation
@@ -108,9 +108,7 @@ def load_mnist_classifier(checkpoint_path, device):
 def define_experiment(exp_folder, exp_class, params, exp_counter):
     log_file = Path(os.path.join(exp_folder, exp_class, exp_class + '.csv'))
     params_columns = ['latent_dim_sub', 'latent_dim_sym', 'learning_rate', 'dropout', 'dropout_ENC', 'dropout_DEC',
-                      'recon_w',
-                      'kl_w',
-                      'query_w', 'sup_w']
+                      'recon_w', 'kl_w', 'query_w', 'sup_w', 'flow_w']
     if log_file.is_file():
         # Load file
         log_csv = pd.read_csv(os.path.join(exp_folder, exp_class, exp_class + '.csv'))
@@ -294,10 +292,20 @@ def run_mnist_vael(param_grid, exp_class, exp_folder, data_folder, batch_size, d
             decoder = MNISTPairsDecoder(label_dim=label_dim, hidden_channels=64, latent_dim=config['latent_dim_sub'],
                                         dropout=config['dropout_DEC'])
             mlp = MNISTPairsMLP(in_features=config['latent_dim_sym'], n_facts=n_digits * 2)
+
+            # FlowNet: learns p(z_sub | facts_probs) via conditional flow matching.
+            # dim_cond = n_digits * 2 because facts_probs has shape (bs, 2, n_digits) -> flattened.
+            flow_net = None
+            if config.get('flow_w', 0.0) > 0.0:
+                flow_net = FlowNet(
+                    dim_sub=config['latent_dim_sub'],
+                    dim_cond=n_digits * 2,
+                )
+
             model = MNISTPairsVAELModel(encoder=encoder, decoder=decoder, mlp=mlp,
                                         latent_dims=(config['latent_dim_sym'], config['latent_dim_sub']),
                                         model_dict=model_dict, w_q=w_q, dropout=config['dropout'], is_train=True,
-                                        device=device)
+                                        device=device, flow_net=flow_net)
             model = model.to(device)
 
             optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'])
@@ -321,6 +329,7 @@ def run_mnist_vael(param_grid, exp_class, exp_folder, data_folder, batch_size, d
                                                                               kl_w=config['kl_w'],
                                                                               query_w=config['query_w'],
                                                                               sup_w=config['sup_w'],
+                                                                              flow_w=config.get('flow_w', 0.0),
                                                                               folder=os.path.join(exp_folder, exp_class,
                                                                                                   exp_ID),
                                                                               rec_loss=config['rec_loss'],

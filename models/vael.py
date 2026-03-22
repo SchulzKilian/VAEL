@@ -8,7 +8,8 @@ from utils.graph_semiring import GraphSemiring
 
 class VAELModel(nn.Module):
 
-    def __init__(self, encoder, decoder, mlp, latent_dims, model_dict, dropout=None, is_train=True, device='cpu'):
+    def __init__(self, encoder, decoder, mlp, latent_dims, model_dict, dropout=None, is_train=True, device='cpu',
+                 flow_net=None):
 
         super(VAELModel, self).__init__()
 
@@ -20,6 +21,7 @@ class VAELModel(nn.Module):
         self.model_dict = model_dict  # Dictionary of pre-compiled ProbLog models
         self.is_train = is_train
         self.device = device
+        self.flow_net = flow_net  # Optional FlowNet for conditional flow matching over z_sub
 
         # Herbrand base
         self.herbrand_base = self.define_herbrand_base(self.mlp.n_facts).to(self.device)
@@ -46,6 +48,7 @@ class VAELModel(nn.Module):
 
         # Sub-symbolical component
         self.z_subsym = z[:, self.latent_dim_sym:]
+        self.z_subsym_predropout = self.z_subsym  # keep pre-dropout copy for flow loss target
 
         # Dropout on sub-symbolical variable
         if self.dropout and self.training:
@@ -82,6 +85,53 @@ class VAELModel(nn.Module):
     def herbrand(self, world):
         """Herbrand representation of the given world(s)"""
         return torch.matmul(world, self.herbrand_base)
+
+    def compute_flow_loss(self):
+        """
+        Conditional Flow Matching loss over z_sub conditioned on facts_probs.
+
+        Uses a linear interpolation path x_t = (1-t)*x_0 + t*z_sub between
+        Gaussian noise x_0 and the encoded z_sub. The optimal velocity for
+        this path is (z_sub - x_0), which the flow net learns to predict.
+
+        Both z_sub and facts_probs are detached so the flow loss does not
+        affect encoder/ProbLog gradients — only FlowNet parameters are trained
+        by this loss.
+
+        Call this after the forward pass (which sets self.z_subsym and self.facts_probs).
+        Returns a scalar zero tensor if flow_net is None.
+        """
+        if self.flow_net is None:
+            return torch.zeros((), device=self.device)
+
+        x_1 = self.z_subsym_predropout.detach()               # (bs, dim_sub) — target (pre-dropout)
+        x_0 = torch.randn_like(x_1)                           # (bs, dim_sub) — source
+        t = torch.rand(x_1.shape[0], 1, device=self.device)   # (bs, 1)
+        x_t = (1.0 - t) * x_0 + t * x_1                      # linear interpolant
+        v_target = x_1 - x_0                                  # optimal velocity
+
+        cond = self.facts_probs.detach().flatten(1)            # (bs, dim_cond)
+        v_pred = self.flow_net(x_t, t, cond)
+
+        return F.mse_loss(v_pred, v_target)
+
+    def flow_sample(self, cond, n_steps=20):
+        """
+        Sample z_sub by integrating the learned velocity field via Euler method.
+
+        cond:    (bs, dim_cond) - conditioning vector (flattened facts_probs)
+        n_steps: number of Euler integration steps (20 is sufficient for low-dim latents)
+        Returns z_sub samples of shape (bs, latent_dim_sub).
+        """
+        assert self.flow_net is not None, "flow_net is not set on this model"
+        bs = cond.shape[0]
+        x = torch.randn(bs, self.latent_dim_sub, device=self.device)
+        dt = 1.0 / n_steps
+        for i in range(n_steps):
+            t = torch.full((bs, 1), i * dt, device=self.device)
+            v = self.flow_net(x, t, cond)
+            x = x + v * dt
+        return x
 
     def define_herbrand_base(self, n_facts):
         """Defines the herbrand base to encode ProbLog worlds"""
@@ -149,10 +199,11 @@ class VAELModel(nn.Module):
 
 class MNISTPairsVAELModel(VAELModel):
 
-    def __init__(self, encoder, decoder, mlp, latent_dims, model_dict, w_q, dropout=None, is_train=True, device=False):
+    def __init__(self, encoder, decoder, mlp, latent_dims, model_dict, w_q, dropout=None, is_train=True, device=False,
+                 flow_net=None):
         super(MNISTPairsVAELModel, self).__init__(encoder=encoder, decoder=decoder, mlp=mlp, latent_dims=latent_dims,
                                                   model_dict=model_dict, dropout=dropout, is_train=is_train,
-                                                  device=device)
+                                                  device=device, flow_net=flow_net)
 
         self.w_q = w_q  # Worlds-queries matrix
 

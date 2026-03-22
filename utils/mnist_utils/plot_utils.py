@@ -80,11 +80,15 @@ def image_generation(model, name, folder, img_suff="", n_samples=9, batch_size=3
             z = torch.normal(mean, sigma, size=(1, model.latent_dim_sub + model.latent_dim_sym))
             z = z.to(model.device)
 
-            # Subsymbolical latent variable
-            z_subsym = z[:, model.latent_dim_sym:]
-
             # Extract probability for each digit
             model.facts_probs = model.compute_facts_probability(z[:, :model.latent_dim_sym])
+
+            # Sample z_sub: use flow if available, else plain Gaussian
+            if model.flow_net is not None:
+                cond = model.facts_probs.detach().flatten(1)
+                z_subsym = model.flow_sample(cond)
+            else:
+                z_subsym = z[:, model.latent_dim_sym:]
 
             queries = list(range(model.mlp.n_facts - 1))
             query_prob = torch.empty(1, len(queries))
@@ -139,11 +143,15 @@ def conditional_image_generation(model, name, folder, img_suff="", batch_size=32
                     z = torch.normal(mean, sigma, size=(1, model.latent_dim_sym + model.latent_dim_sub))
                     z = z.to(model.device)
 
-                    # Subsymbolical latent variable
-                    z_subsym = z[:, model.latent_dim_sym:]
-
                     # Extract probability for each digit
                     model.facts_probs = model.compute_facts_probability(z[:, :model.latent_dim_sym])
+
+                    # Sample z_sub: use flow if available, else plain Gaussian
+                    if model.flow_net is not None:
+                        cond = model.facts_probs.detach().flatten(1)
+                        z_subsym = model.flow_sample(cond)
+                    else:
+                        z_subsym = z[:, model.latent_dim_sym:]
 
                     # Problog inference to compute worlds probability distributions given the evidence P(w|e)
                     worlds_prob = model.problog_inference_with_evidence(model.facts_probs, evidence)

@@ -26,6 +26,7 @@ mnist_vael = dict(
                   'kl_w': [1e-5],
                   'query_w': [1.],
                   'sup_w': [0.],
+                  'flow_w': [1.0],
                   'query': [True]},
     early_stopping_info = {
         'patience': 20,

@@ -316,3 +316,48 @@ class MarioMLP(nn.Module):
         z = self.dense(x)
 
         return z
+
+
+class FlowNet(nn.Module):
+    """
+    Velocity field for conditional flow matching over z_sub.
+
+    Learns a vector field v(x_t, t, cond) -> dx/dt that transports
+    samples from N(0,I) to the posterior distribution p(z_sub | facts_probs).
+    Trained with the Conditional Flow Matching (CFM) objective using
+    linear interpolation paths: x_t = (1-t)*x_0 + t*z_sub.
+
+    Args:
+        dim_sub:  dimensionality of z_sub (the subsymbolic latent)
+        dim_cond: dimensionality of the conditioning vector (flattened facts_probs)
+        hidden:   hidden layer width
+    """
+    def __init__(self, dim_sub, dim_cond, hidden=256):
+        super(FlowNet, self).__init__()
+
+        self.t_embed = nn.Sequential(
+            nn.Linear(1, 64),
+            nn.SiLU(),
+            nn.Linear(64, 64),
+        )
+
+        self.net = nn.Sequential(
+            nn.Linear(dim_sub + 64 + dim_cond, hidden),
+            nn.SiLU(),
+            nn.Linear(hidden, hidden),
+            nn.SiLU(),
+            nn.Linear(hidden, hidden),
+            nn.SiLU(),
+            nn.Linear(hidden, dim_sub),
+        )
+
+    def forward(self, x_t, t, cond):
+        """
+        x_t:  (bs, dim_sub)  - noisy latent at time t in [0, 1]
+        t:    (bs, 1)        - time scalar per sample
+        cond: (bs, dim_cond) - symbolic conditioning (flattened facts_probs)
+        Returns velocity (bs, dim_sub).
+        """
+        t_emb = self.t_embed(t)
+        h = torch.cat([x_t, t_emb, cond], dim=1)
+        return self.net(h)

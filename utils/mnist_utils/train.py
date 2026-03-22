@@ -56,7 +56,7 @@ def img_log_likelihood(recon, xs):
 
 
 def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_stopping_info=None, run_ID='_',
-                query=True, recon_w=1, kl_w=1, query_w=1, sup_w=0,
+                query=True, recon_w=1, kl_w=1, query_w=1, sup_w=0, flow_w=0.0,
                 rec_loss='MSE', train_batch_size=32, val_batch_size=32):
     Path(os.path.join(folder, run_ID)).mkdir(parents=True, exist_ok=True)
     if sup_w > 0:
@@ -81,7 +81,8 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
             'recon_loss': [],
             'kl_div': [],
             'queryBCE': [],
-            'labelBCE': []
+            'labelBCE': [],
+            'flow_loss': [],
         }
 
         # Validation info
@@ -90,7 +91,8 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
             'recon_loss': [],
             'kl_div': [],
             'queryBCE': [],
-            'labelBCE': []
+            'labelBCE': [],
+            'flow_loss': [],
         }
 
         ############
@@ -136,15 +138,21 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
                                                                                sup=sup,
                                                                                rec_loss=rec_loss)
 
+            # Flow matching loss: trains FlowNet to model p(z_sub | facts_probs).
+            # Inputs are detached so only FlowNet parameters receive this gradient.
+            flow_loss = model.compute_flow_loss()
+            total_loss = loss + flow_w * flow_loss
+
             # Registering losses
             train_epoch_info['elbo'].append(loss.data.cpu().detach().numpy())
             train_epoch_info['recon_loss'].append(recon_loss.data.cpu().detach().numpy())
             train_epoch_info['kl_div'].append(gauss_kl_div.data.cpu().detach().numpy())
             train_epoch_info['queryBCE'].append(queryBCE.data.cpu().detach().numpy())
             train_epoch_info['labelBCE'].append(labelBCE.data.cpu().detach().numpy())
+            train_epoch_info['flow_loss'].append(flow_loss.data.cpu().detach().numpy())
 
             # Backward pass
-            loss.backward()
+            total_loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             # Optimization step
             optimizer.step()
@@ -203,11 +211,14 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
                                                                                    rec_loss=rec_loss)
 
             # Record validation loss
+            with torch.no_grad():
+                val_flow_loss = model.compute_flow_loss()
             validation_epoch_info['elbo'].append(loss.data.cpu().detach().numpy())
             validation_epoch_info['recon_loss'].append(recon_loss.data.cpu().detach().numpy())
             validation_epoch_info['kl_div'].append(gauss_kl_div.data.cpu().detach().numpy())
             validation_epoch_info['queryBCE'].append(queryBCE.data.cpu().detach().numpy())
             validation_epoch_info['labelBCE'].append(labelBCE.data.cpu().detach().numpy())
+            validation_epoch_info['flow_loss'].append(val_flow_loss.data.cpu().detach().numpy())
 
             pbar.update(1)
             #break
