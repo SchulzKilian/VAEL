@@ -4,7 +4,7 @@ VAEL experiment(s) configuration
 mnist_vael = dict(
     device = 'cuda:0',
     n_digits = 10,
-    experiment_name='vael_2digitMNIST',
+    experiment_name='vael_2digitMNIST_flow',
     dataset_dimensions = {'train': 42000,
                           'val': 12000,
                           'test': 6000},
