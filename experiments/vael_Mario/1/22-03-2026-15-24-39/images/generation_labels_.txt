@@ -1,0 +1,1 @@
+['right', tensor([0., 0., 1., 0.])],['down', tensor([0., 1., 0., 0.])],['right', tensor([0., 0., 1., 0.])],['down', tensor([0., 1., 0., 0.])],['up', tensor([1., 0., 0., 0.])],['right', tensor([0., 0., 1., 0.])],['left', tensor([0., 0., 0., 1.])],['right', tensor([0., 0., 1., 0.])],
