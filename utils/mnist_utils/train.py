@@ -57,6 +57,7 @@ def img_log_likelihood(recon, xs):
 
 def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_stopping_info=None, run_ID='_',
                 query=True, recon_w=1, kl_w=1, query_w=1, sup_w=0, flow_w=0.0, flow_warmup_epochs=15,
+                kl_warmup_epochs=20,
                 rec_loss='MSE', train_batch_size=32, val_batch_size=32):
     Path(os.path.join(folder, run_ID)).mkdir(parents=True, exist_ok=True)
     if sup_w > 0:
@@ -77,6 +78,10 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
 
         # Warmup: ramp flow_w from 0 to target over the first flow_warmup_epochs epochs
         effective_flow_w = flow_w * min(1.0, epoch / flow_warmup_epochs)
+        # KL annealing: ramp kl_w from 0 to target over the first kl_warmup_epochs epochs.
+        # This lets the encoder learn to use z_sub for reconstruction before KL pressure kicks in,
+        # preventing posterior collapse of the subsymbolic latent.
+        effective_kl_w = kl_w * min(1.0, epoch / kl_warmup_epochs)
 
         # Training info
         train_epoch_info = {
@@ -135,7 +140,7 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
                                                                                query=query,
                                                                                model=model,
                                                                                recon_w=recon_w,
-                                                                               kl_w=kl_w,
+                                                                               kl_w=effective_kl_w,
                                                                                query_w=query_w,
                                                                                sup_w=sup_w,
                                                                                sup=sup,
@@ -207,7 +212,7 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
                                                                                    labels=None,
                                                                                    query=query,
                                                                                    recon_w=recon_w,
-                                                                                   kl_w=kl_w,
+                                                                                   kl_w=effective_kl_w,
                                                                                    query_w=query_w,
                                                                                    model=model,
                                                                                    sup=False,

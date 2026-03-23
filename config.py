@@ -6,7 +6,7 @@ mnist_vael = dict(
     n_digits = 10,
     # Ablation: flow_w=0.0 is the original VAEL baseline, flow_w=1.0 is VAEL+flow.
     # Both run with n_exp=5 seeds and land in the same CSV for direct comparison.
-    experiment_name='vael_2digitMNIST_comparison',
+    experiment_name='vael_2digitMNIST_fixed',
     dataset_dimensions = {'train': 42000,
                           'val': 12000,
                           'test': 6000},
@@ -25,7 +25,7 @@ mnist_vael = dict(
                   'dropout_ENC': [0.5],
                   'dropout_DEC': [0.5],
                   'recon_w': [1e-1],
-                  'kl_w': [1e-5],
+                  'kl_w': [1e-3],
                   'query_w': [1.],
                   'sup_w': [0.],
                   'flow_w': [0.0, 1.0],   # grid: 0.0 = baseline, 1.0 = flow
