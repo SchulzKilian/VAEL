@@ -31,6 +31,7 @@ mnist_vael = dict(
                   'query_w': [1.],
                   'sup_w': [0.],
                   'flow_w': [0, 2],  # baseline vs best flow weight
+                  'no_symbolic': [False],
                   'query': [True]},
     early_stopping_info = {
         'patience': 20,
