@@ -30,8 +30,8 @@ mnist_vael = dict(
                   'kl_w': [1e-3],
                   'query_w': [1.],
                   'sup_w': [0.],
-                  'flow_w': [2],  # best flow weight; fixed across both conditions
-                  'no_symbolic': [False, True],  # VAEL+flow vs pure VAE+flow
+                  'flow_w': [0, 2],  # best flow weight; fixed across both conditions
+                  'no_symbolic': [False],  # VAEL+flow vs pure VAE+flow
                   'query': [True]},
     early_stopping_info = {
         'patience': 20,
