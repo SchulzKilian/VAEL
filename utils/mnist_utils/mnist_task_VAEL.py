@@ -108,7 +108,7 @@ def load_mnist_classifier(checkpoint_path, device):
 def define_experiment(exp_folder, exp_class, params, exp_counter):
     log_file = Path(os.path.join(exp_folder, exp_class, exp_class + '.csv'))
     params_columns = ['latent_dim_sub', 'latent_dim_sym', 'learning_rate', 'dropout', 'dropout_ENC', 'dropout_DEC',
-                      'recon_w', 'kl_w', 'query_w', 'sup_w', 'flow_w']
+                      'recon_w', 'kl_w', 'query_w', 'sup_w', 'flow_w', 'no_symbolic']
     if log_file.is_file():
         # Load file
         log_csv = pd.read_csv(os.path.join(exp_folder, exp_class, exp_class + '.csv'))
@@ -307,7 +307,8 @@ def run_mnist_vael(param_grid, exp_class, exp_folder, data_folder, batch_size, d
             model = MNISTPairsVAELModel(encoder=encoder, decoder=decoder, mlp=mlp,
                                         latent_dims=(config['latent_dim_sym'], config['latent_dim_sub']),
                                         model_dict=model_dict, w_q=w_q, dropout=config['dropout'], is_train=True,
-                                        device=device, flow_net=flow_net)
+                                        device=device, flow_net=flow_net,
+                                        no_symbolic=config.get('no_symbolic', False))
             model = model.to(device)
 
             optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'])

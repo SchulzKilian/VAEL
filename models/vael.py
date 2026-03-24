@@ -9,7 +9,7 @@ from utils.graph_semiring import GraphSemiring
 class VAELModel(nn.Module):
 
     def __init__(self, encoder, decoder, mlp, latent_dims, model_dict, dropout=None, is_train=True, device='cpu',
-                 flow_net=None):
+                 flow_net=None, no_symbolic=False):
 
         super(VAELModel, self).__init__()
 
@@ -22,6 +22,7 @@ class VAELModel(nn.Module):
         self.is_train = is_train
         self.device = device
         self.flow_net = flow_net  # Optional FlowNet for conditional flow matching over z_sub
+        self.no_symbolic = no_symbolic  # If True: zero world_h everywhere → pure VAE+flow baseline
 
         # Herbrand base
         self.herbrand_base = self.define_herbrand_base(self.mlp.n_facts).to(self.device)
@@ -34,6 +35,8 @@ class VAELModel(nn.Module):
         z: (bs, latent_dim)
         w: (bs, herbrand_base)
         """
+        if self.no_symbolic:
+            w = torch.zeros_like(w)
         dec_input = torch.cat([z, w], 1)
         image = self.decoder(dec_input)
         return image
@@ -113,7 +116,7 @@ class VAELModel(nn.Module):
         x_t = (1.0 - t) * x_0 + t * x_1                      # linear interpolant
         v_target = x_1 - x_0                                  # optimal velocity
 
-        cond = self.world_h.detach()                           # (bs, 2*n_digits) — binary world encoding
+        cond = torch.zeros_like(self.world_h).detach() if self.no_symbolic else self.world_h.detach()
         v_pred = self.flow_net(x_t, t, cond)
 
         return F.mse_loss(v_pred, v_target)
@@ -127,6 +130,8 @@ class VAELModel(nn.Module):
         Returns z_sub samples of shape (bs, latent_dim_sub).
         """
         assert self.flow_net is not None, "flow_net is not set on this model"
+        if self.no_symbolic:
+            cond = torch.zeros_like(cond)
         bs = cond.shape[0]
         x = torch.randn(bs, self.latent_dim_sub, device=self.device)
         dt = 1.0 / n_steps
@@ -203,10 +208,10 @@ class VAELModel(nn.Module):
 class MNISTPairsVAELModel(VAELModel):
 
     def __init__(self, encoder, decoder, mlp, latent_dims, model_dict, w_q, dropout=None, is_train=True, device=False,
-                 flow_net=None):
+                 flow_net=None, no_symbolic=False):
         super(MNISTPairsVAELModel, self).__init__(encoder=encoder, decoder=decoder, mlp=mlp, latent_dims=latent_dims,
                                                   model_dict=model_dict, dropout=dropout, is_train=is_train,
-                                                  device=device, flow_net=flow_net)
+                                                  device=device, flow_net=flow_net, no_symbolic=no_symbolic)
 
         self.w_q = w_q  # Worlds-queries matrix
 

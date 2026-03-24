@@ -4,9 +4,11 @@ VAEL experiment(s) configuration
 mnist_vael = dict(
     device = 'cuda:0',
     n_digits = 10,
-    # Flow weight ablation: [1, 2, 3, 4] with 3 seeds each.
-    # Baseline (flow_w=0) already exists in vael_2digitMNIST_comparison.
-    experiment_name='vael_2digitMNIST_flow_ablation',
+    # Final matched-pair comparison: flow_w=0 vs flow_w=2 (best from ablation).
+    # Both conditions: KL annealing over 20 epochs, kl_w=1e-3, everything else identical.
+    # Only difference: flow presence and warmup. 10 seeds each for error bars.
+    # Combine with 3 existing seeds per condition from prior experiments = 13 total each.
+    experiment_name='vael_2digitMNIST_final_comparison',
     dataset_dimensions = {'train': 42000,
                           'val': 12000,
                           'test': 6000},
@@ -14,10 +16,10 @@ mnist_vael = dict(
                   'val': 120,
                   'test': 60},
     exp_config = {'task': ['base'],
-                  'tag': ['ablation'],
+                  'tag': ['final'],
                   'rec_loss': ['LAPLACE'],
                   'max_epoch': [50],
-                  'n_exp': [3],
+                  'n_exp': [10],
                   'latent_dim_sub': [8],
                   'latent_dim_sym': [15],
                   'learning_rate': [1e-4],
@@ -28,7 +30,7 @@ mnist_vael = dict(
                   'kl_w': [1e-3],
                   'query_w': [1.],
                   'sup_w': [0.],
-                  'flow_w': [1, 2, 3, 4],  # ablation over flow weight; baseline (0.0) already exists
+                  'flow_w': [0, 2],  # baseline vs best flow weight
                   'query': [True]},
     early_stopping_info = {
         'patience': 20,
