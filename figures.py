@@ -88,6 +88,8 @@ def load_npy(path):
 
 # ── load all experiment data ───────────────────────────────────────────────────
 
+early_rows       = load_csv(f'{EXP_ROOT}/vael_2digitMNIST/vael_2digitMNIST.csv')
+early_flow_rows  = load_csv(f'{EXP_ROOT}/vael_2digitMNIST_flow/vael_2digitMNIST_flow.csv')
 comparison_rows  = load_csv(f'{EXP_ROOT}/vael_2digitMNIST_comparison/vael_2digitMNIST_comparison.csv')
 fixed_rows       = load_csv(f'{EXP_ROOT}/vael_2digitMNIST_fixed/vael_2digitMNIST_fixed.csv')
 flow_abl_rows    = load_csv(f'{EXP_ROOT}/vael_2digitMNIST_flow_ablation/vael_2digitMNIST_flow_ablation.csv')
@@ -95,9 +97,10 @@ sym_abl_rows     = load_csv(f'{EXP_ROOT}/vael_2digitMNIST_symbolic_ablation/vael
 final_rows       = load_csv(f'{EXP_ROOT}/vael_2digitMNIST_final_comparison/vael_2digitMNIST_final_comparison.csv')
 
 # label each row with a condition name
+# early_rows have no flow_w column — default to 0.0 (pure baseline)
 def label_rows(rows):
     for r in rows:
-        fw  = float(r['flow_w'])
+        fw  = float(r.get('flow_w', 0.0))
         kw  = float(r['kl_w'])
         ns  = r.get('no_symbolic', 'False') in ('True', '1', 'true')
         if ns:
@@ -114,16 +117,27 @@ def label_rows(rows):
             r['_cond'] = 'other'
     return rows
 
+label_rows(early_rows)
+label_rows(early_flow_rows)
 label_rows(comparison_rows)
 label_rows(fixed_rows)
 label_rows(flow_abl_rows)
 label_rows(sym_abl_rows)
 label_rows(final_rows)
 
-# Use comparison_rows for kl=1e-5 conditions and final_rows for kl=1e-3 conditions.
-# final_rows is the definitive experiment (10 runs each, flow_w=2 vs 0) and supersedes
-# fixed_rows (5 runs each, flow_w=1) for the high-kl comparison.
-all_rows = comparison_rows + final_rows + sym_abl_rows
+# Pool all runs per condition:
+#   baseline_low_kl : early(3) + comparison(5)   = 8 runs
+#   flow_low_kl     : early_flow(1) + comparison(5) = 6 runs
+#   baseline_high_kl: fixed baseline(5) + final(10) = 15 runs
+#   flow_high_kl    : flow_w=2 only — flow_abl(3) + final(10) = 13 runs
+#     (fixed flow runs used flow_w=1, not the recommended flow_w=2, so excluded
+#      from the main comparison; they appear in the flow-weight ablation only)
+fixed_baseline_rows = [r for r in fixed_rows if r['_cond'] == 'baseline_high_kl']
+flow_abl_fw2_rows   = [r for r in flow_abl_rows if float(r.get('flow_w', 0.0)) == 2.0]
+
+all_rows = (early_rows + early_flow_rows + comparison_rows
+            + fixed_baseline_rows + final_rows + flow_abl_fw2_rows
+            + sym_abl_rows)
 
 
 def rows_for(cond, source=None):
