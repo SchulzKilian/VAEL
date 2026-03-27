@@ -92,6 +92,7 @@ comparison_rows  = load_csv(f'{EXP_ROOT}/vael_2digitMNIST_comparison/vael_2digit
 fixed_rows       = load_csv(f'{EXP_ROOT}/vael_2digitMNIST_fixed/vael_2digitMNIST_fixed.csv')
 flow_abl_rows    = load_csv(f'{EXP_ROOT}/vael_2digitMNIST_flow_ablation/vael_2digitMNIST_flow_ablation.csv')
 sym_abl_rows     = load_csv(f'{EXP_ROOT}/vael_2digitMNIST_symbolic_ablation/vael_2digitMNIST_symbolic_ablation.csv')
+final_rows       = load_csv(f'{EXP_ROOT}/vael_2digitMNIST_final_comparison/vael_2digitMNIST_final_comparison.csv')
 
 # label each row with a condition name
 def label_rows(rows):
@@ -117,8 +118,12 @@ label_rows(comparison_rows)
 label_rows(fixed_rows)
 label_rows(flow_abl_rows)
 label_rows(sym_abl_rows)
+label_rows(final_rows)
 
-all_rows = comparison_rows + fixed_rows + sym_abl_rows
+# Use comparison_rows for kl=1e-5 conditions and final_rows for kl=1e-3 conditions.
+# final_rows is the definitive experiment (10 runs each, flow_w=2 vs 0) and supersedes
+# fixed_rows (5 runs each, flow_w=1) for the high-kl comparison.
+all_rows = comparison_rows + final_rows + sym_abl_rows
 
 
 def rows_for(cond, source=None):
